@@ -21,6 +21,15 @@ package com.loopj.android.http;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,6 +39,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPInputStream;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
@@ -109,11 +122,66 @@ public class AsyncHttpClient {
     private final Map<String, String> clientHeaderMap;
 
 
+    private class MySSLSocketFactory extends SSLSocketFactory {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+
+        public MySSLSocketFactory(KeyStore truststore) throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException, UnrecoverableKeyException {
+            super(truststore);
+
+            TrustManager tm = new X509TrustManager() {
+                public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
+
+                public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
+
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+            };
+
+            sslContext.init(null, new TrustManager[] { tm }, null);
+        }
+
+        @Override
+        public Socket createSocket(Socket socket, String host, int port, boolean autoClose) throws IOException, UnknownHostException {
+            return sslContext.getSocketFactory().createSocket(socket, host, port, autoClose);
+        }
+
+        @Override
+        public Socket createSocket() throws IOException {
+            return sslContext.getSocketFactory().createSocket();
+        }
+    }
+    
     /**
      * Creates a new AsyncHttpClient.
      */
     public AsyncHttpClient() {
+    	this(false);
+    }
+    
+    public AsyncHttpClient(boolean allowAnySertificates) {
         BasicHttpParams httpParams = new BasicHttpParams();
+
+        KeyStore trustStore;
+    	SSLSocketFactory sf = null;
+    	if (allowAnySertificates)
+    	{
+			try
+			{
+				trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+		        trustStore.load(null, null);
+		
+		        sf = new MySSLSocketFactory(trustStore);
+		        sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+			}
+			catch (Throwable e)
+			{
+				// FIXME Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
 
         ConnManagerParams.setTimeout(httpParams, socketTimeout);
         ConnManagerParams.setMaxConnectionsPerRoute(httpParams, new ConnPerRouteBean(maxConnections));
@@ -129,7 +197,7 @@ public class AsyncHttpClient {
 
         SchemeRegistry schemeRegistry = new SchemeRegistry();
         schemeRegistry.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-        schemeRegistry.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
+        schemeRegistry.register(new Scheme("https", (sf!=null)?sf:SSLSocketFactory.getSocketFactory(), 443));
         ThreadSafeClientConnManager cm = new ThreadSafeClientConnManager(httpParams, schemeRegistry);
 
         httpContext = new SyncBasicHttpContext(new BasicHttpContext());
