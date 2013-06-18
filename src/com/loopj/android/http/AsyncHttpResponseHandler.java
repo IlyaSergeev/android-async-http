@@ -18,11 +18,9 @@
 
 package com.loopj.android.http;
 
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import org.apache.http.Header;
 import java.io.IOException;
+
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;

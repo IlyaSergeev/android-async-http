@@ -311,7 +311,14 @@ public class AsyncHttpClient {
      * @param value the contents of the header
      */
     public void addHeader(String header, String value) {
-        clientHeaderMap.put(header, value);
+    	if (value != null)
+    	{
+    		clientHeaderMap.put(header, value);
+    	}
+    	else
+    	{
+    		clientHeaderMap.remove(header);
+    	}
     }
 
     /**
