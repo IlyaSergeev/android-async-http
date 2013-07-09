@@ -105,7 +105,7 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 	 * @param binaryData
 	 *            the body of the HTTP response from the server
 	 */
-	public void onSuccess(byte[] binaryData)
+	public void onSuccess()
 	{
 	}
 
@@ -118,9 +118,9 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 	 * @param binaryData
 	 *            the body of the HTTP response from the server
 	 */
-	public void onSuccess(int statusCode, byte[] binaryData)
+	public void onSuccess(int statusCode)
 	{
-		onSuccess(binaryData);
+		onSuccess();
 	}
 
 	/**
@@ -169,9 +169,9 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 	// thread)
 	//
 
-	protected void handleSuccessMessage(int statusCode, byte[] responseBody)
+	protected void handleSuccessMessage(int statusCode)
 	{
-		onSuccess(statusCode, responseBody);
+		onSuccess(statusCode);
 	}
 
 	protected void handleFailureMessage(Throwable e, byte[] responseBody)
@@ -193,7 +193,7 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 			break;
 		case SUCCESS_MESSAGE:
 			response = (Object[]) msg.obj;
-			handleSuccessMessage(((Integer) response[0]).intValue(), (byte[]) response[1]);
+			handleSuccessMessage(((Integer) response[0]).intValue());
 			break;
 		case FAILURE_MESSAGE:
 			response = (Object[]) msg.obj;	
