@@ -66,6 +66,7 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 	
 	// Allow all contentType
 	private static String[] mAllowedContentTypes = null;
+	private boolean isCanceled = false;
 
 	/**
 	 * Creates a new BinaryHttpResponseHandler
@@ -248,18 +249,22 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 				long totalLength = temp.getContentLength();
 				int readedBytes = 0;
 				int allReadBytes = 0; 
-				while((readedBytes = stream.read(beffer)) != -1)
+				while(!isCanceled() && (readedBytes = stream.read(beffer)) != -1)
 				{
 					onDidDownload(statusCode, beffer, readedBytes);
 					allReadBytes += readedBytes;
 					sendProgressChangeMessage(statusCode, allReadBytes, totalLength);
+				}
+				if (isCanceled())
+				{
+					sendFailureMessage(new Exception("User stop downloading"), responseBody);
 				}
 				sendSuccessMessage(statusCode, responseBody);
 			}
 		}
 		catch (IOException e)
 		{
-			sendFailureMessage(e, (byte[]) null);
+			sendFailureMessage(e, responseBody);
 		}
 
 		if (status.getStatusCode() >= 300)
@@ -270,5 +275,15 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 		{
 			sendSuccessMessage(status.getStatusCode(), responseBody);
 		}
+	}
+
+	public boolean isCanceled()
+	{
+		return isCanceled;
+	}
+	
+	public void setIsCanceled(boolean isCanceled)
+	{
+		this.isCanceled = isCanceled;
 	}
 }

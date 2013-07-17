@@ -192,7 +192,6 @@ public class AsyncHttpClient
 			}
 			catch (Throwable e)
 			{
-				// FIXME Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
