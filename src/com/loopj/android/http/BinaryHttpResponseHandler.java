@@ -259,7 +259,6 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 				{
 					sendFailureMessage(new Exception("User stop downloading"), responseBody);
 				}
-				sendSuccessMessage(statusCode, responseBody);
 			}
 		}
 		catch (IOException e)
