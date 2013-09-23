@@ -271,23 +271,63 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler
 			sendFailureMessage(e, responseBody);
 		}
 
-		if (status.getStatusCode() >= 300)
-		{
-			sendFailureMessage(new HttpResponseException(status.getStatusCode(), status.getReasonPhrase()), responseBody);
-		}
-		else
-		{
-			sendSuccessMessage(status.getStatusCode(), responseBody);
-		}
-	}
+    // Methods which emulate android's Handler and Message methods
+    @Override
+    protected void handleMessage(Message msg) {
+        Object[] response;
+        switch(msg.what) {
+            case SUCCESS_MESSAGE:
+                response = (Object[])msg.obj;
+                handleSuccessMessage(((Integer) response[0]).intValue() , (byte[]) response[1]);
+                break;
+            case FAILURE_MESSAGE:
+                response = (Object[])msg.obj;
+                handleFailureMessage((Throwable)response[0], (byte[]) response[1]);
+                break;
+            default:
+                super.handleMessage(msg);
+                break;
+        }
+    }
 
-	public boolean isCanceled()
-	{
-		return isCanceled;
-	}
-	
-	public void setIsCanceled(boolean isCanceled)
-	{
-		this.isCanceled = isCanceled;
-	}
+    // Interface to AsyncHttpRequest
+    @Override
+    void sendResponseMessage(HttpResponse response) {
+        StatusLine status = response.getStatusLine();
+        Header[] contentTypeHeaders = response.getHeaders("Content-Type");
+        byte[] responseBody = null;
+        if(contentTypeHeaders.length != 1) {
+            //malformed/ambiguous HTTP Header, ABORT!
+            sendFailureMessage(new HttpResponseException(status.getStatusCode(), "None, or more than one, Content-Type Header found!"), responseBody);
+            return;
+        }
+        Header contentTypeHeader = contentTypeHeaders[0];
+        boolean foundAllowedContentType = false;
+        for(String anAllowedContentType : mAllowedContentTypes) {
+            if(Pattern.matches(anAllowedContentType, contentTypeHeader.getValue())) {
+                foundAllowedContentType = true;
+            }
+        }
+        if(!foundAllowedContentType) {
+            //Content-Type not in allowed list, ABORT!
+            sendFailureMessage(new HttpResponseException(status.getStatusCode(), "Content-Type not allowed!"), responseBody);
+            return;
+        }
+        try {
+            HttpEntity entity = null;
+            HttpEntity temp = response.getEntity();
+            if(temp != null) {
+                entity = new BufferedHttpEntity(temp);
+            }
+            responseBody = EntityUtils.toByteArray(entity);
+        } catch(IOException e) {
+            sendFailureMessage(e, (byte[]) null);
+        }
+
+        if(status.getStatusCode() >= 300) {
+            sendFailureMessage(new HttpResponseException(status.getStatusCode(), status.getReasonPhrase()), responseBody);
+        } else {
+            sendSuccessMessage(status.getStatusCode(), responseBody);
+        }
+    }
 }
